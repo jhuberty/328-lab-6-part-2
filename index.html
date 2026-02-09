@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ADXL335 Live Orientation</title>
+  <style>
+    :root {
+      --bg-0: #0d0f14;
+      --bg-1: #1a1f2b;
+      --bg-2: #10131a;
+      --text: #e6e8ef;
+      --muted: #a0a8b8;
+      --accent: #f4b342;
+      --accent-2: #33d3c9;
+      --grid: rgba(255, 255, 255, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% 10%, rgba(51, 211, 201, 0.12), transparent 60%),
+        radial-gradient(1000px 700px at 90% 20%, rgba(244, 179, 66, 0.18), transparent 65%),
+        linear-gradient(160deg, var(--bg-0), var(--bg-1));
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    header {
+      padding: 28px clamp(20px, 4vw, 48px) 12px;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: clamp(24px, 3vw, 36px);
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) 1fr;
+      gap: clamp(16px, 3vw, 32px);
+      padding: 20px clamp(20px, 4vw, 48px) 36px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(16, 19, 26, 0.88), rgba(12, 14, 20, 0.92));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(8px);
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: #0b0d12;
+      background: linear-gradient(120deg, var(--accent), #f7d08a);
+      cursor: pointer;
+      transition: transform 150ms ease, box-shadow 150ms ease;
+      box-shadow: 0 8px 18px rgba(244, 179, 66, 0.25);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px); }
+    button.secondary {
+      color: var(--text);
+      background: linear-gradient(120deg, #1e2533, #2b354a);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .status {
+      font-size: 14px;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(18, 22, 30, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .metric span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      font-size: 20px;
+      display: block;
+      margin-top: 6px;
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .toggle-grid label {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+      background: rgba(16, 19, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+
+    .toggle-grid input {
+      accent-color: var(--accent-2);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 420px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(180deg, rgba(10, 12, 18, 0.6), rgba(10, 12, 18, 0.9)),
+        repeating-linear-gradient(90deg, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(0deg, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent 28px);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(11, 14, 20, 0.7);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    footer {
+      padding: 10px clamp(20px, 4vw, 48px) 24px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .glow {
+      position: absolute;
+      inset: -20% 0 auto;
+      height: 40%;
+      background: radial-gradient(circle, rgba(51, 211, 201, 0.12), transparent 60%);
+      filter: blur(30px);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .data-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ADXL335 Live Orientation</h1>
+    <p>Connect your Arduino over USB, stream CSV data (x,y,z), and watch a live 3D cube match the accelerometer orientation.</p>
+  </header>
+
+  <main>
+    <section class="panel controls">
+      <button id="connectBtn">Connect Arduino</button>
+      <button id="disconnectBtn" class="secondary" disabled>Disconnect</button>
+      <button id="calibrateBtn" class="secondary" disabled>Set Flat (Calibrate)</button>
+      <div id="status" class="status">Idle. Click "Connect Arduino" to start.</div>
+
+      <div class="data-grid">
+        <div class="metric">
+          <span>X Raw</span>
+          <strong id="xRaw">--</strong>
+        </div>
+        <div class="metric">
+          <span>Y Raw</span>
+          <strong id="yRaw">--</strong>
+        </div>
+        <div class="metric">
+          <span>Z Raw</span>
+          <strong id="zRaw">--</strong>
+        </div>
+        <div class="metric">
+          <span>Pitch / Roll</span>
+          <strong id="angles">--</strong>
+        </div>
+      </div>
+
+      <div class="metric">
+        <span>Tips</span>
+        <strong style="font-size: 14px; line-height: 1.4; font-weight: 500; color: var(--muted);">
+          Use Chrome or Edge (Web Serial). Place the board flat and click "Set Flat" to calibrate.
+        </strong>
+      </div>
+
+      <div class="metric">
+        <span>Axis Tuning</span>
+        <div class="toggle-grid">
+          <label><input type="checkbox" id="swapXY">Swap X/Y</label>
+          <label><input type="checkbox" id="invertX">Invert X</label>
+          <label><input type="checkbox" id="invertY">Invert Y</label>
+          <label><input type="checkbox" id="invertZ">Invert Z</label>
+          <label><input type="checkbox" id="invertPitch">Invert Pitch</label>
+          <label><input type="checkbox" id="invertRoll">Invert Roll</label>
+          <label><input type="checkbox" id="fullRange">Full 180 Mode</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel canvas-wrap">
+      <div class="glow"></div>
+      <canvas id="scene"></canvas>
+      <div class="legend">Orientation Cube (pitch/roll)</div>
+    </section>
+  </main>
+
+  <footer>
+    Web Serial requires HTTPS or localhost. If the button is disabled, the browser does not support Web Serial.
+  </footer>
+
+  <script>
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const calibrateBtn = document.getElementById("calibrateBtn");
+    const statusEl = document.getElementById("status");
+    const xRawEl = document.getElementById("xRaw");
+    const yRawEl = document.getElementById("yRaw");
+    const zRawEl = document.getElementById("zRaw");
+    const anglesEl = document.getElementById("angles");
+    const canvas = document.getElementById("scene");
+    const swapXYEl = document.getElementById("swapXY");
+    const invertXEl = document.getElementById("invertX");
+    const invertYEl = document.getElementById("invertY");
+    const invertZEl = document.getElementById("invertZ");
+    const invertPitchEl = document.getElementById("invertPitch");
+    const invertRollEl = document.getElementById("invertRoll");
+    const fullRangeEl = document.getElementById("fullRange");
+
+    const ctx = canvas.getContext("2d");
+
+    let port = null;
+    let reader = null;
+    let buffer = "";
+    let animationId = null;
+
+    const state = {
+      x: 0,
+      y: 0,
+      z: 0,
+      pitch: 0,
+      roll: 0,
+    };
+
+    const offsets = {
+      x: 512,
+      y: 512,
+      z: 512,
+    };
+
+    function updateStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#ff9b9b" : "var(--muted)";
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function computeOrientation(xRaw, yRaw, zRaw) {
+      let xg = xRaw - offsets.x;
+      let yg = yRaw - offsets.y;
+      let zg = zRaw - offsets.z;
+
+      if (swapXYEl.checked) [xg, yg] = [yg, xg];
+      if (invertXEl.checked) xg = -xg;
+      if (invertYEl.checked) yg = -yg;
+      if (invertZEl.checked) zg = -zg;
+
+      const norm = Math.hypot(xg, yg, zg) || 1;
+      xg /= norm;
+      yg /= norm;
+      zg /= norm;
+
+      const pitch = fullRangeEl.checked
+        ? Math.atan2(-xg, Math.sign(zg) * Math.sqrt(yg * yg + zg * zg))
+        : Math.atan2(-xg, Math.sqrt(yg * yg + zg * zg));
+      const roll = fullRangeEl.checked
+        ? Math.atan2(yg, Math.sign(zg) * Math.sqrt(xg * xg + zg * zg))
+        : Math.atan2(yg, zg);
+
+      return {
+        pitch: invertPitchEl.checked ? -pitch : pitch,
+        roll: invertRollEl.checked ? -roll : roll,
+      };
+    }
+
+    function drawCube() {
+      const { pitch, roll } = state;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      const size = Math.min(width, height) * 0.22;
+      const centerX = width * 0.5;
+      const centerY = height * 0.55;
+
+      const points = [
+        [-1, -1, -1],
+        [1, -1, -1],
+        [1, 1, -1],
+        [-1, 1, -1],
+        [-1, -1, 1],
+        [1, -1, 1],
+        [1, 1, 1],
+        [-1, 1, 1],
+      ];
+
+      const rotated = points.map(([x, y, z]) => {
+        const cosPitch = Math.cos(pitch);
+        const sinPitch = Math.sin(pitch);
+        const cosRoll = Math.cos(roll);
+        const sinRoll = Math.sin(roll);
+
+        const y1 = y * cosPitch - z * sinPitch;
+        const z1 = y * sinPitch + z * cosPitch;
+
+        const x2 = x * cosRoll + z1 * sinRoll;
+        const z2 = -x * sinRoll + z1 * cosRoll;
+
+        const perspective = 3 / (3 + z2);
+
+        return [
+          centerX + x2 * size * perspective,
+          centerY + y1 * size * perspective,
+          z2,
+        ];
+      });
+
+      const faces = [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [0, 1, 5, 4],
+        [2, 3, 7, 6],
+        [1, 2, 6, 5],
+        [0, 3, 7, 4],
+      ];
+
+      const faceData = faces.map((face) => {
+        const depth = face.reduce((sum, index) => sum + rotated[index][2], 0) / face.length;
+        return { face, depth };
+      }).sort((a, b) => a.depth - b.depth);
+
+      faceData.forEach(({ face, depth }) => {
+        const shade = 0.3 + ((depth + 1) / 2) * 0.5;
+        ctx.fillStyle = `rgba(51, 211, 201, ${shade.toFixed(2)})`;
+        ctx.beginPath();
+        const [firstX, firstY] = rotated[face[0]];
+        ctx.moveTo(firstX, firstY);
+        face.slice(1).forEach((index) => {
+          const [x, y] = rotated[index];
+          ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(244, 179, 66, 0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
+
+    function animate() {
+      drawCube();
+      animationId = requestAnimationFrame(animate);
+    }
+
+    async function connect() {
+      if (!("serial" in navigator)) {
+        updateStatus("Web Serial is not supported in this browser.", true);
+        return;
+      }
+
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+
+        const textDecoder = new TextDecoderStream();
+        port.readable.pipeTo(textDecoder.writable);
+        reader = textDecoder.readable.getReader();
+
+        updateStatus("Connected. Streaming data...");
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        calibrateBtn.disabled = false;
+
+        readLoop();
+        if (!animationId) animate();
+      } catch (error) {
+        updateStatus(`Connection failed: ${error.message}`, true);
+      }
+    }
+
+    async function disconnect() {
+      try {
+        if (reader) {
+          await reader.cancel();
+          reader.releaseLock();
+          reader = null;
+        }
+        if (port) {
+          await port.close();
+          port = null;
+        }
+      } catch (error) {
+        updateStatus(`Disconnect error: ${error.message}`, true);
+      }
+
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+      calibrateBtn.disabled = true;
+      updateStatus("Disconnected.");
+    }
+
+    function calibrateFlat() {
+      if (!state.x && !state.y && !state.z) {
+        updateStatus("Waiting for data before calibrating...", true);
+        return;
+      }
+
+      offsets.x = state.x;
+      offsets.y = state.y;
+      offsets.z = state.z;
+      updateStatus("Calibration set from current position.");
+    }
+
+    async function readLoop() {
+      while (reader) {
+        try {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) processChunk(value);
+        } catch (error) {
+          updateStatus(`Read error: ${error.message}`, true);
+          break;
+        }
+      }
+    }
+
+    function processChunk(chunk) {
+      buffer += chunk;
+      let lineBreak = buffer.indexOf("\n");
+
+      while (lineBreak !== -1) {
+        const line = buffer.slice(0, lineBreak).trim();
+        buffer = buffer.slice(lineBreak + 1);
+        if (line) parseLine(line);
+        lineBreak = buffer.indexOf("\n");
+      }
+    }
+
+    function parseLine(line) {
+      const parts = line.split(",").map((value) => Number.parseFloat(value));
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return;
+
+      const [xRaw, yRaw, zRaw] = parts;
+      state.x = xRaw;
+      state.y = yRaw;
+      state.z = zRaw;
+
+      const { pitch, roll } = computeOrientation(xRaw, yRaw, zRaw);
+      state.pitch = pitch;
+      state.roll = roll;
+
+      xRawEl.textContent = xRaw.toFixed(0);
+      yRawEl.textContent = yRaw.toFixed(0);
+      zRawEl.textContent = zRaw.toFixed(0);
+      anglesEl.textContent = `${(pitch * 180 / Math.PI).toFixed(1)}° / ${(roll * 180 / Math.PI).toFixed(1)}°`;
+    }
+
+    connectBtn.addEventListener("click", connect);
+    disconnectBtn.addEventListener("click", disconnect);
+    calibrateBtn.addEventListener("click", calibrateFlat);
+
+    if (!("serial" in navigator)) {
+      connectBtn.disabled = true;
+      updateStatus("Web Serial not available. Use Chrome or Edge on desktop.", true);
+    }
+  </script>
+</body>
+</html>
